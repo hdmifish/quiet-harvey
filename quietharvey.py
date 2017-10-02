@@ -1,32 +1,60 @@
-from tweepy import Stream
-from tweepy import OAuthHandler
-from tweepy.streaming import StreamListener
-
+import listener
+from pymongo import MongoClient
 import json
+from datetime import datetime
+from bubbler import Bubbler
+import matplotlib.pyplot as plt
 
-with open("token.json", 'r') as fp:
-    config = json.load(fp)
+class QuietHarvey():
 
-con_key = config["con_key"]
-con_sec = config["con_sec"]
-tok_key = config["tok_key"]
-tok_sec = config["tok_sec"]
+    def __init__(self):
+        print("Initializing...")
+        print("connecting to mongo...", end='')
+        self.mongo = MongoClient('localhost')
+        print("done!")
+        self.db = self.mongo.tweetstream
+        self.col = self.db.harvey
+        self.malformed = 0
+        self.tweetmax = 100000
 
+    def post(self, data):
+        if self.col.tweets.count() < self.tweetmax:
+            data = json.loads(data)
 
-class Listener(StreamListener):
-    def on_data(self, data):
-        print(data)
+            try:
+                print(str(self.col.tweets.count()))
+                print(data["created_at"])
+                print(data["user"]["screen_name"])
+                print(data["user"]["name"])
+                print(data["text"])
+                print("\n\n\n\n")
+            except KeyError:
+                self.malformed += 1
+                print("malformed tweet, ignoring...")
+            else:
 
+                return self.col.tweets.insert(data)
+        else:
+            print("Gathering Complete! " + str(self.malformed) + " / " + str(self.col.tweets.count()) + " were malformed")
 
-    def on_error(self, status):
-        print(status)
+            bubble = Bubbler()
+            bubble.generate_text(self.col.tweets.find())
+            print("Generating wordcloud...")
+            wordcloud = Bubbler(w=1920, h=1080, maskpath="mask.jpg").generate_cloud()
+            plt.figure()
+            plt.imshow(wordcloud, interpolation="lanczos")
+            plt.axis("off")
+            plt.show()
+            exit(0)
 
-
-auth = OAuthHandler(con_key,con_sec)
-auth.set_access_token(tok_key,tok_sec)
 
 if __name__ == "__main__":
-    val = input("What do you want to crawl?: ")
+    client = QuietHarvey()
+    print("done!")
+    listener = listener.Listener(client)
 
-    tweetStream = Stream(auth, Listener())
-    tweetStream.filter(track=[val])
+    q = input("Please type a search phrase: ")
+
+    listener.run(q)
+
+

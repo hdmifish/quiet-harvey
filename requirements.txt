@@ -1,0 +1,6 @@
+tweepy
+wordcloud
+matplotlib
+numpy
+pymongo
+pillow
