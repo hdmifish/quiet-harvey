@@ -26,11 +26,11 @@ class Listener(StreamListener):
         return True
 
     def on_error(self, status):
-        print(status)
+        self.client.error(status)
 
     def run(self, tracker):
        # t = tweepy.API(self.auth)
        # t.update_status("Test")
         tweetStream = Stream(auth=self.auth, listener=self)
-        tweetStream.filter(track=[tracker], async=True)
+        tweetStream.filter(track=[tracker])
 
