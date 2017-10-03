@@ -40,7 +40,7 @@ class QuietHarvey(object):
         self.col = self.db.harvey
         self.counter.old = self.col.tweets.count()
         self.malformed = 0
-        self.tweet_max = 100000
+        self.tweet_max = 25000
         print("\n\nPreparing to gather \033[91m" + str(self.tweet_max - self.col.tweets.count())
               + "\033[0m more tweets to reach \033[96m" + str(self.tweet_max) + "\033[0m.")
         div = float(self.tweet_max - self.col.tweets.count()) / float(6.00)
@@ -73,12 +73,16 @@ class QuietHarvey(object):
                 print("malformed tweet, ignoring...")
             else:
                 self.counter.new = self.col.tweets.count() + 1
-                return self.col.tweets.insert(data)
+                formatted = {"text": data["text"], "user": data["user"], "timestamp_ms": data["timestamp_ms"], "id_str": data["id_str"] }
+
+                return self.col.tweets.insert(formatted)
         else:
+
             print("Gathering Complete! " + str(self.malformed) + " / " + str(self.col.tweets.count()) + " were malformed")
 
             bubble = Bubbler()
-            bubble.generate_text(self.col.tweets.find())
+
+            bubble.generate_text(self.col.tweets.find(), self.col.tweets.count())
             print("Generating wordcloud...")
             wordcloud = Bubbler(w=1920, h=1080, maskpath="mask.jpg").generate_cloud()
             plt.figure()
@@ -95,9 +99,18 @@ if __name__ == "__main__":
         listener = listener.Listener(client)
 
         q = input("Please type a search phrase: ")
+
         client.counter.timein = datetime.utcnow()
-        listener.run(q)
+        while True:
+            try:
+                listener.run(q)
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                print("Failure in run " +  str(e))
+                continue
     except KeyboardInterrupt:
+
         dif = client.counter.new - client.counter.old
         timedif = (datetime.utcnow() - client.counter.timein).total_seconds()
         rate = round(float(dif/timedif), 2)
