@@ -35,7 +35,7 @@ class Bubbler(WordCloud):
             metric = round((float(pcount / total) * 100), 1)
             stdout.write("Percentage complete: [%d%%]    " % (metric) + " (" + str(pcount) + " of " + str(total) + ")   \r")
             stdout.flush()
-        stdout.write("                                                         /n")
+        stdout.write("                                                         \n")
         stdout.flush()
 
         print("Writing to file...", end='')
@@ -44,7 +44,7 @@ class Bubbler(WordCloud):
         print("DONE!")
         return
 
-    def generate_metrics(self, dbobject, count):
+    def generate_distribution(self, dbobject, count):
         user_metrics = {}
         words = {}
 

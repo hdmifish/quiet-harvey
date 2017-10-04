@@ -1,5 +1,6 @@
 {
   "_comment": "RENAME THIS FILE TO config.json FOR IT TO WORK",
+  "max_tweets": 8000,
   "con_key":"",
   "con_sec":"",
   "tok_key":"",
