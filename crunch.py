@@ -1,13 +1,9 @@
-import numpy
-import networkx
+import numpy as np
+import matplotlib.pyplot as plt
 
+# TODO: Remove all debug texts that are unecessary
 
 class Crunch(object):
-    class Edge:
-        def __init__(self, a, b):
-            self.n0 = a
-            self.n1 = b
-            self.weight = 0
 
     def __init__(self, dataset=None):
         if dataset is not None:
@@ -15,36 +11,104 @@ class Crunch(object):
         else:
             self.d = None
 
-    def generate_network(self):
+        self.frequency = {}
+
+    def get_user_by_id(self, id):
+        for post in self.d:
+            if post["user"]["id"] == id:
+                return post["user"]
+
+    def get_rt_user_by_id(self, id):
+        for post in self.d:
+            if "rt" in post:
+                if post["rt"]["rt_user"]["id"] == id:
+                    return post["rt"]["rt_user"]
+
+    def generate_frequency(self):
+
+        self.frequency = {}
         print("Processing...")
-        node_list = []
-        edge_list = []
+        for post in self.d:
+            if post["user"]["id"] not in self.frequency:
+                self.frequency[post["user"]["id"]] = 1
+            else:
+                self.frequency[post["user"]["id"]] += 1
+
+        average = float(len(self.d) / len(self.frequency))
+        print("Total Items: " + str(len(self.frequency)))
+
+        temp = {}
+        for uid in self.frequency:
+            if self.frequency[uid] < average:
+                temp[uid] = self.frequency[uid]
+
+        for i in temp:
+            del self.frequency[i]
+        print(str(self.frequency))
+        if len(self.frequency) < 1:
+            return False
+        return True
+
+
+    def generate_rt_frequency(self):
+        self.frequency = {}
+        print("Processing...")
 
         # Generate Nodes
+
         for post in self.d:
-            if post["user"]["id"] not in node_list:
-                print("Adding " + post["user"]["screen_name"] + " ({})".format(post["user"]["id_str"]))
-                node_list.append(post["user"]["id"])
-        # Generate Edges
-
-        for rt in self.d:
-            try:
-                print("RT...", end='')
-                if post["rt"]["rt_user"]["id"] in node_list:
-                    print("IN")
-                    edge_list.append(self.Edge(post["user"]["id"], post["rt"]["rt_user"]["id"]))
-                    print(post["user"]["screen_name"] + " ---> " + post["rt"]["rt_user"]["screen_name"])
+            if "rt" in post:
+                if post["rt"]["rt_user"]["id"] not in self.frequency:
+                    self.frequency[post["rt"]["rt_user"]["id"]] = 1
                 else:
-                    print("OUT")
-                    print ("Adding [RT] " + post["rt"]["rt_user"]["screen_name"] + " and connecting")
-                    node_list.append(post["rt"]["rt_user"]["id"])
-                    edge_list.append(self.Edge(post["user"]["id"], post["rt"]["rt_user"]["id"]))
+                    self.frequency[post["rt"]["rt_user"]["id"]] += 1
 
-            except KeyError:
-                print("post is not RT")
-        print("Nodes: " + str(len(node_list)))
-        print("Edges: " + str(len(edge_list)))
+        average = float(len(self.d) / len(self.frequency))
+        print("Total Items: " + str(len(self.frequency)))
 
+        temp = {}
+        for uid in self.frequency:
+            if self.frequency[uid] < average:
+               temp[uid] = self.frequency[uid]
+
+        for i in temp:
+            del self.frequency[i]
+        print("Total Items with more than one RT: " + str(len(self.frequency)))
+        if len(self.frequency) < 1:
+            return False
+        return True
+
+
+    def generate_graph(self,
+                       xax="X-Axis",
+                       yax="Y-Axis",
+                       title="Title",
+                       fig="title"):
+        bars = []
+        freq = []
+        average = float(len(self.d)/len(self.frequency))
+
+        for uid in self.frequency:
+
+            if self.frequency[uid] >= average:
+                print(str(uid) + " has " + str(self.frequency[uid]))
+                bars.append(self.get_rt_user_by_id(uid)["screen_name"])
+                freq.append(self.frequency[uid])
+        if len(bars) < 2:
+            print("\033[31m Error, not enough data to construct a meaningful graph. "
+                  "Higher sample size needed \033[0m")
+            return False
+
+        y_pos = np.arange(len(bars))
+        plt.bar(y_pos, freq, align='center', alpha=0.5)
+        plt.xticks(y_pos, bars)
+        plt.xlabel("Account")
+        plt.ylabel('# of Retweets')
+        plt.title('Retweets by Account')
+        plt.figure(num=1).canvas.set_window_title(fig)
+
+
+        plt.show()
 
 
 

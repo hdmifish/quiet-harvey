@@ -12,13 +12,13 @@ class Bubbler(WordCloud):
     def __init__(self, w=1280, h=1024, mw=1000, maskpath=None):
         self.stopwords = set(STOPWORDS)
         if maskpath is not None:
-
             self.mask = np.array(Image.open(maskpath))
             super().__init__(background_color="black", width=w, height=h, stopwords=self.stopwords, max_words=mw, mask=self.mask)
 
         else:
             self.mask = None
-            self.stopwords.add("rt")
+
+            print(str(self.stopwords))
             super().__init__(width=w, height=h, stopwords=self.stopwords, max_words=mw)
 
         return
@@ -31,7 +31,7 @@ class Bubbler(WordCloud):
         for post in dbobject:
             pcount += 1
             subtext = re.sub(r"http\S+", "", post['text'])
-            text += subtext.lower() + '\n'
+            text += subtext.lower().replace("rt", '').strip() + '\n'
             metric = round((float(pcount / total) * 100), 1)
             stdout.write("Percentage complete: [%d%%]    " % (metric) + " (" + str(pcount) + " of " + str(total) + ")   \r")
             stdout.flush()

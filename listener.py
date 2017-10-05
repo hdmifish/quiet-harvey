@@ -20,6 +20,7 @@ class Listener(StreamListener):
         self.auth = OAuthHandler(con_key, con_sec)
         self.auth.set_access_token(tok_key, tok_sec)
         self.client = client
+        self.tweetstream = None
 
     def on_data(self, data):
         self.client.post(data)
@@ -28,9 +29,14 @@ class Listener(StreamListener):
     def on_error(self, status):
         self.client.error(status)
 
+    def disconnect(self):
+        self.tweetStream.disconnect()
+        print("Disconnected")
+
+
     def run(self, tracker):
        # t = tweepy.API(self.auth)
        # t.update_status("Test")
-        tweetStream = Stream(auth=self.auth, listener=self)
-        tweetStream.filter(track=[tracker])
+        self.tweetStream = Stream(auth=self.auth, listener=self)
+        self.tweetStream.filter(track=[tracker])
 
