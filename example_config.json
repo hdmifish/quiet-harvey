@@ -6,4 +6,7 @@
   "tok_key":"",
   "tok_sec":"",
    "use_local": false,
-  "uri_string": "USE THIS IF YOU ARE CONNECTING TO A REMOTE MONGO SERVER (ATLAS). Remember to set set use_local to false"}
+  "uri_string": "USE THIS IF YOU ARE CONNECTING TO A REMOTE MONGO SERVER (ATLAS). Remember to set set use_local to false",
+  "mask": "mask.jpg",
+  "target_graph_population": 10
+}
