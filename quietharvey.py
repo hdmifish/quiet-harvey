@@ -8,6 +8,7 @@ from bubbler import Bubbler
 import matplotlib.pyplot as plt
 import threading
 from queue import Queue
+import sys
 from urllib3.exceptions import ProtocolError
 
 # Set this to the number of cores in your processor. (including hyper-threaded ones)
@@ -82,11 +83,13 @@ class QuietHarvey(object):
         self.counter = self.Counter()
 
         print("Initializing...")
-        print("connecting to mongo...", end='')
+        print("Loading config.json...", end="")
         # Load the config file into a dictionary
         with open("config.json", "r") as fp:
             self.cfg = json.load(fp)
 
+        print("DONE!")
+        print("connecting to mongo...", end='')
         # Check which DB we are using
         if self.cfg["use_local"] is True:
             # print("\nusing local database...", end='')
@@ -104,30 +107,38 @@ class QuietHarvey(object):
 
         print("\033[92mSUCCESS\033[0m")
         # NOTE: \033[XXm codes are for changing the console color of the text
-
+        print("Accessing \"tweetstream\" database (If it doesn't exist, it will be created)...", end='')
         self.db = self.mongo_client.tweetstream
+        print("This may take a bit...")
 
         # PyMongo is dynamic so you can just name a collection even if it doesnt exist
+        print("Acessing \"harvey\" collection (If it doesn't exist, it will be created)...", end='')
         self.col = self.db.harvey
+        print("This may take a bit...")
 
-        self.counter.old = self.col.tweets.count()
+        print("Setting up static values [counter]...", end='')
+        self.counter.old, self.tweet_count = self.col.tweets.count(), self.col.tweets.count()
 
         # Counts the number of tweets that are missing data
         # This deals with managing connection hiccups
         self.malformed = 0
 
+        print("DONE!")
+        print("Setting up static values [max tweets]...", end='')
         self.tweet_max = self.cfg["max_tweets"]
+        print("DONE!")
 
         # A collection of Worker threads
+        print("Setting up static values [thread_pool]...", end='')
         self.thread_pool = []
-        # A queue for buffering the input from twitter on slower systems
-        self.tweet_buffer = list()
+        print("DONE!")
 
+        # A queue for buffering the input from twitter on slower systems
+        print("Setting up static values [tweet_buffer]...", end='')
+        self.tweet_buffer = list()
+        print("DONE!")
         # Allow the listener and client objects to call each-others functions
         self.listener = None
-
-        # A counter for how many tweets are currently in the database
-        self.tweet_count = self.col.tweets.count()
 
         self.query = ""
 
@@ -189,25 +200,60 @@ class QuietHarvey(object):
         Handles the interaction between Mongo and data crunching classes
         :return: None
         """
+
         if self.mode in [1, 3]:
             # Initialize a Crunch object
+
+            print("Creating Crunch Dataset...", end='', flush=True)
+            sys.stdout.flush()
             c = crunch.Crunch(list(self.col.tweets.find()), config=self.cfg)
+
+            print("\nGenerating retweet frequency graph...", end='', flush=True)
+            sys.stdout.flush()
             if c.generate_rt_frequency():
                 # The above if statement just saves the redundency of creating a graph with no data
                 c.generate_graph(xax="Account", yax="Retweets",
                                  title="Re-Tweets from Account",
                                  fig="RT data about " + self.query,
                                  mode=1)
+
+            sys.stdout.flush()
+
+            user, val = c.get_top_tweet()
+            if user is None:
+                print("\033[31mMultiple Entries share frequency. Cannot generate top tweet\033[0m")
+            else:
+                tweet = self.col.tweets.find_one({"rt.rt_user.id_str": str(user)})
+                print("\n\n---------------------------------\nTop Retweet:\nUser: "
+                      + tweet["rt"]["rt_user"]["screen_name"] + "\nTweet: " + tweet["rt"][
+                    "rt_text"] + "\nWith " + str(val) + " tweets\n--------------------------------------\n")
+            print("\n\nGenerating tweet graph...")
             if c.generate_frequency():
                 c.generate_graph(xax="Account", yax="Tweets", title="Tweets from Account", fig="Tweet data about "
-                                                                                               + self.query, mode=0)
+                                + self.query, mode=0)
+
+            sys.stdout.flush()
+
+            user, val = c.get_top_tweet()
+            if user is None:
+                print("\033[31mMultiple Entries share frequency. Cannot generate top tweet\033[0m")
+            else:
+                # print(user)
+                tweet = self.col.tweets.find_one({"user.id_str" : str(user)})
+                print("\n\n------------------------Top Tweet:\nUser: "
+                      + tweet["user"]["screen_name"] + "\nTweet: " + tweet["text"]
+                      + "\nWith " + str(val) + " tweets\n\n-------------------------------")
+
         if self.mode in [2, 3]:
+            print("Initializing Bubbler...", end='', flush=True)
+            sys.stdout.flush()
             bubble = Bubbler()
+            print("DONE!", flush=True)
 
             # For bubbler to work we need to create a text file to read
             bubble.generate_text(self.col.tweets.find(), self.col.tweets.count())
-            print("Generating wordcloud...", end='')
-
+            print("Generating wordcloud...", end='', flush=True)
+            sys.stdout.flush()
             # we want to use a binary mask image following wordcloud.py's design
             # https://github.com/amueller/word_cloud
 

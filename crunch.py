@@ -184,11 +184,11 @@ class Crunch(object):
             # Rollback to previous reduction
             elif len(self.frequency) < 3:
                 print("Rolling back")
-                print(self.frequency)
-                print(rollback_dict)
+                # print(self.frequency)
+                # print(rollback_dict)
                 self.frequency.update(rollback_dict)
-                print(self.frequency)
-                print(str(len(self.frequency)))
+                # print(self.frequency)
+                # print(str(len(self.frequency)))
                 if len(rollback_dict) > pop:
                     self.frequency = {}
                     # Order dictionary by value to pick $pop number of users for the graph
@@ -205,6 +205,18 @@ class Crunch(object):
 
         if len(self.frequency) < 1:
             return False
+
+    def get_top_tweet(self):
+        top = ("", 0)
+
+        for t in self.frequency:
+            if self.frequency[t] > top[1]:
+                top = (t, self.frequency[t])
+
+            if self.frequency == top[1]:
+                return None, None
+
+        return top
 
     def generate_graph(self,
                        xax="X-Axis",
