@@ -14,19 +14,22 @@ tok_sec = cfg["tok_sec"]
 
 class Listener(StreamListener):
     """
-    A implementation of tweepy.StreamListener to access Twitter's Stream API based on a filter string
+    A implementation of tweepy.StreamListener to access Twitter's Stream API
+    based on a filter string
     """
 
     def __init__(self, client):
         """
-        Constructor. Sets up the authentication handler to grant us access to the Twitter API
+        Constructor. Sets up the authentication handler to grant us access
+        to the Twitter API
         Also handles linking the client
         :param client: quietharvey.QuietHarvey client object
         """
         self.auth = OAuthHandler(con_key, con_sec)
         self.auth.set_access_token(tok_key, tok_sec)
         self.client = client
-        self.tweet_stream = self.tweet_stream = Stream(auth=self.auth, listener=self)
+        self.tweet_stream = self.tweet_stream = Stream(auth=self.auth,
+                                                       listener=self)
 
     def on_data(self, data):
         """

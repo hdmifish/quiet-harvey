@@ -1,10 +1,8 @@
-from os import path
 from wordcloud import WordCloud, STOPWORDS
 from PIL import Image
 import numpy as np
 import re
 from sys import stdout
-
 
 
 class Bubbler(WordCloud):
@@ -21,27 +19,32 @@ class Bubbler(WordCloud):
             self.mask = np.array(Image.open(maskpath))
 
             # Initialize the WordCloud object
-            super().__init__(background_color="black", width=w, height=h, stopwords=self.stopwords, max_words=mw, mask=self.mask)
-
+            super().__init__(background_color="black",
+                             width=w, height=h, stopwords=self.stopwords,
+                             max_words=mw, mask=self.mask)
         else:
             self.mask = None
-
             # print(str(self.stopwords))
-            super().__init__(width=w, height=h, stopwords=self.stopwords, max_words=mw)
-
+            super().__init__(width=w, height=h,
+                             stopwords=self.stopwords, max_words=mw)
         return
 
-    def generate_text(self, dbobject, total):
+    def to_html(self):
+        return super().to_html()
+
+    @staticmethod
+    def generate_text(dbobject, total):
         """
         Create a human-friendly text file from all of the tweets
         :param dbobject: a cursor or list of tweets
-        :param total: the total number of objects in the list (cursors do not provide this themselves)
+        :param total: the total number of objects in
+                      the list (cursors do not provide this themselves)
         :return: None
         """
         text = ""
 
         pcount = 0
-        print("Generating text file from database...")
+        print("Generating text file from database...", flush=True)
 
         for post in dbobject:
             # Iterate through the database
@@ -55,12 +58,12 @@ class Bubbler(WordCloud):
 
             # Percent counter
             metric = round((float(pcount / total) * 100), 1)
-            stdout.write("Percentage complete: [%d%%]    " % (metric) + " (" + str(pcount) + " of " + str(total) + ")   \r")
+            stdout.write("Percentage complete: [%d%%]    " % metric
+                         + " (" + str(pcount) + " of " + str(total) + ")   \r")
             stdout.flush()
 
-        stdout.write("                                                         \n")
+        stdout.write("                                                     \n")
         stdout.flush()
-
 
         print("Writing to file...", end='')
         with open('tweets.txt', 'w') as fp:
@@ -69,11 +72,13 @@ class Bubbler(WordCloud):
         print("DONE!")
         return
 
-    def generate_distribution(self, dbobject, count):
+    @staticmethod
+    def generate_distribution(dbobject, count):
         """
         Generate two frequency maps, one of users and another of words
         :param dbobject: a cursor or list of tweets
-        :param count: the total number of objects in the list (cursors do not provide this themselves)
+        :param count: the total number of objects in the list
+                      (cursors do not provide this themselves)
         :return: dict, dict
         """
         user_metrics = {}
