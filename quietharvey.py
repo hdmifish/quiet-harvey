@@ -16,7 +16,7 @@ from urllib3.exceptions import ProtocolError
 
 
 class Worker(threading.Thread):
-    """
+    """Creating Crunch Dataset...
     Thread class for asynchronously pushing tweets to the database
     """
     def __init__(self, name):
@@ -26,7 +26,8 @@ class Worker(threading.Thread):
 
     def run(self):
         #
-        while client.running or len(client.tweet_buffer) > 0:
+        while client.running or len(client.tweet_buffer) > 0 \
+                and not client.cutoff:
             if len(client.tweet_buffer) > 0:
                 data = ""
                 num = ""
@@ -56,6 +57,11 @@ class Worker(threading.Thread):
                         client.col.tweets.insert(formatted)
                     else:
                         print("Item already exists")
+                        client.tweet_count -= 1
+                    if client.col.tweets.count() >= client.tweet_max:
+                        client.cutoff = True
+                        print("Stopping all workers, cutoff reached")
+
                 except KeyError:
                     client.malformed += 1
                     client.tweet_count -= 1
@@ -82,6 +88,9 @@ class QuietHarvey(object):
         # Way to manually stop the thread
         self.running = False
         self.mode = None
+        self.query = "tweets"
+        self.color = False
+        self.cutoff = False
 
         # Create the storage class
         self.counter = self.Counter()
@@ -193,7 +202,7 @@ class QuietHarvey(object):
         :return: None
         """
 
-        if self.tweet_count < self.tweet_max:
+        if self.tweet_count < self.tweet_max and not self.cutoff:
             # Keep adding tweets from twitter to the buffer as they come in
             self.tweet_count += 1
             self.tweet_buffer.append((data, self.tweet_count))
@@ -222,7 +231,7 @@ class QuietHarvey(object):
         :return: None
         """
 
-        if self.mode in [1, 3]:
+        if self.mode in [1, 4]:
             # Initialize a Crunch object
 
             print("Creating Crunch Dataset...", end='', flush=True)
@@ -287,29 +296,44 @@ class QuietHarvey(object):
                       + "\nWith " + str(val)
                       + " tweets\n\n-------------------------------")
 
-        if self.mode in [2, 3]:
+        if self.mode in [2, 3, 4]:
             print("Initializing Bubbler...", end='', flush=True)
             sys.stdout.flush()
             bubble = Bubbler()
             print("DONE!", flush=True)
 
             # For bubbler to work we need to create a text file to read
-            bubble.generate_text(self.col.tweets.find(),
-                                 self.col.tweets.count())
+            if self.mode != 3:
+                bubble.generate_text(self.col.tweets.find(),
+                                     self.col.tweets.count())
+            else:
+                print("Using static text file...")
             print("Generating wordcloud...", end='', flush=True)
             sys.stdout.flush()
             # we want to use a binary mask image following
             # wordcloud.py's design
             # https://github.com/amueller/word_cloud
 
-            wordcloud = Bubbler(w=1920, h=1080,
-                                maskpath=self.cfg["mask"]).generate_cloud()
+            wc = Bubbler(w=1920, h=1080,
+                                maskpath=self.cfg["mask"])
+            wordcloud = wc.generate_cloud()
             print("DONE!")
-            # Set properties for pyplot figure
-            plt.figure().canvas.set_window_title("WordCloud for " + self.query)
-            plt.imshow(wordcloud, interpolation="lanczos")
-            plt.axis("off")
-            plt.show()
+
+            try:
+                plt.figure(None, figsize=(10, 10)).canvas.set_window_title(
+                    "WordCloud for " + self.query)
+            except TclError as e:
+                print("\033[91mTkinter couldn't generate a figure that "
+                      "large. Usually this is a memory issue, shrinking.\nE: "
+                      + str(e) + " \033[0m")
+                return None
+            else:
+                if self.color:
+                    plt.imshow(wc.recolor(), interpolation="lanczos")
+                else:
+                    plt.imshow(wordcloud, Interpolation="lanczos")
+                plt.axis("off")
+                plt.show()
 
 
 if __name__ == "__main__":
@@ -319,10 +343,13 @@ if __name__ == "__main__":
     while True:
         # Menu Loop
         print("Quiet Harvey Main Menu")
-        mode = input("\n\n[1]Crunch, [2]WordCloud, [3]Both, "
-                     "[4]Quit\nChoose a mode: ")
+        mode = input("\n\n[1]Crunch, [2]WordCloud, [3]WordCloud(no update), "
+                     "[4]Crunch&WC  \033[33m[5]Custom Color Map ("
+                     + ["\033[31moff\033[33m","\033[32mon\033[33m"]
+                     [client.color] +
+                     ")\033[0m [6]Quit\nChoose a mode: ")
         try:
-            if int(mode) in [1, 2, 3]:
+            if int(mode) in [1, 2, 3, 4]:
                 client.mode = int(mode)
                 # Determine if we need to connect to twitter at all,
                 # or if just need to analyze our data
@@ -402,9 +429,12 @@ if __name__ == "__main__":
                     print("No tweets to gather. Moving on...")
                     client.analyze()
 
-            elif int(mode) == 4:
+            elif int(mode) == 6:
                 print("Goodbye")
                 exit()
+
+            elif int(mode) == 5:
+                client.color = not client.color
 
             else:
                 print("Invalid option, please choose a valid option")

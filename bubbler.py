@@ -1,4 +1,4 @@
-from wordcloud import WordCloud, STOPWORDS
+from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
 from PIL import Image
 import numpy as np
 import re
@@ -10,16 +10,17 @@ class Bubbler(WordCloud):
     A word cloud / distribution generator that implements the WordCloud module
 
     """
-    def __init__(self, w=1280, h=1024, mw=1000, maskpath=None):
+    def __init__(self, w=1280, h=1024, mw=2000, maskpath=None):
         self.stopwords = set(STOPWORDS)
         # Stopwords are words we don't want to see in a wordcloud
         if maskpath is not None:
 
             # if image has a template
+
             self.mask = np.array(Image.open(maskpath))
 
             # Initialize the WordCloud object
-            super().__init__(background_color="black",
+            super().__init__(background_color="white",
                              width=w, height=h, stopwords=self.stopwords,
                              max_words=mw, mask=self.mask)
         else:
@@ -49,13 +50,15 @@ class Bubbler(WordCloud):
         for post in dbobject:
             # Iterate through the database
             pcount += 1
-
+            if post["is_rt"]:
+                subtext = re.sub(r"http\S+", "", post["rt"]["rt_text"])
+            else:
+                subtext = re.sub(r"http\S+", "", post['text'])
             # Remove all unnecessary links from the file
-            subtext = re.sub(r"http\S+", "", post['text'])
+
 
             # Remove RT from the text file
             text += subtext.lower().replace("rt", '').strip() + '\n'
-
             # Percent counter
             metric = round((float(pcount / total) * 100), 1)
             stdout.write("Percentage complete: [%d%%]    " % metric
@@ -101,6 +104,10 @@ class Bubbler(WordCloud):
 
         return user_metrics, words
 
+    def recolor(self, color_path="mask.jpg"):
+        return super().recolor(color_func=ImageColorGenerator(
+                                    np.array(Image.open(color_path))))
+
     def generate_cloud(self, p='tweets.txt'):
         """
         Generate the actual wordcloud from the text file
@@ -110,11 +117,16 @@ class Bubbler(WordCloud):
         with open(p, 'r') as fp:
             text = fp.read()
 
+        # FIXME: All of this monochrome stuff
         # Generate wordcloud
+
         cloud = self.generate(text)
+
         if self.mask is not None:
             super().to_file("maskout.png")
         return cloud
+
+
 
 
 
