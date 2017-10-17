@@ -1,9 +1,11 @@
+from __future__ import print_function
 import listener
 import crunch
 from pymongo import MongoClient
 from pymongo import errors
 import json
 from datetime import datetime
+import time
 from bubbler import Bubbler
 import matplotlib.pyplot as plt
 import threading
@@ -11,12 +13,118 @@ import sys
 from _tkinter import TclError
 from urllib3.exceptions import ProtocolError
 
-# Set this to the number of cores in your processor.
-# (including hyper-threaded ones)
+def print(s, end='\n', file=sys.stdout):
+    file.write(s + end)
+    file.flush()
+
+
+class ProgressBar(threading.Thread):
+    """
+    Thread class for printing the gathering progress bar
+    """
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
+        func = 0.00
+        bar = ""
+        oldbuf = 0
+        while func < 1.00 and len(client.tweet_buffer) >= 0 or client.running:
+
+            func = float(client.tweet_count / client.tweet_max)
+            buflen = len(client.tweet_buffer)
+
+            if func < 0.05:
+                bar = "=                  "
+            elif func < 0.1:
+                bar = "==                 "
+            elif func < 0.15:
+                bar = "===                "
+            elif func < 0.2:
+                bar = "====               "
+            elif func < 0.25:
+                bar = "=====              "
+            elif func < 0.3:
+                bar = "======             "
+            elif func < 0.35:
+                bar = "=======            "
+            elif func < 0.4:
+                bar = "========           "
+            elif func < 0.45:
+                bar = "=========          "
+            elif func < 0.5:
+                bar = "==========         "
+            elif func < 0.55:
+                bar = "===========        "
+            elif func < 0.6:
+                bar = "============       "
+            elif func < 0.65:
+                bar = "=============      "
+            elif func < 0.7:
+                bar = "==============     "
+            elif func < 0.75:
+                bar = "===============    "
+            elif func < 0.8:
+                bar = "================   "
+            elif func < 0.85:
+                bar = "=================  "
+            elif func < 0.9:
+                bar = "================== "
+            elif func < 1:
+                bar = "==================-"
+            elif func == 1:
+                bar = "-------DONE--------"
+
+            if buflen == 0:
+                bbar = "----DONE----"
+            elif buflen < 100:
+                bbar = "=           "
+            elif func < 500:
+                bbar = "==          "
+            elif func < 1000:
+                bbar = "===         "
+            elif func < 2000:
+                bbar = "====        "
+            elif func < 3000:
+                bbar = "=====       "
+            elif func < 4000:
+                bbar = "======      "
+            elif func < 5000:
+                bbar = "=======     "
+            elif func < 6000:
+                bbar = "========    "
+            elif func < 7000:
+                bbar = "=========   "
+            elif func < 8000:
+                bbar = "==========  "
+            elif func < 9000:
+                bbar = "=========== "
+            elif func < 10000:
+                bbar = "============"
+            elif func > 10000:
+                bbar = "==========>>"
+
+            if oldbuf < buflen:
+                arrow = ">>"
+            elif oldbuf > buflen:
+                arrow = "<<"
+            else:
+                arrow = ""
+
+            oldbuf = buflen
+
+            sys.stdout.write("\rProgress: [" + bar + "] {0:.0f}%".format(func * 100.00) +
+                             " ({c}/{m})".format(c=client.tweet_count, m=client.tweet_max) + " "
+                             "Buffer size [" + bbar  +"][" + arrow + "] ({} tweets in buffer)".format(str(buflen)))
+
+
+            sys.stdout.flush()
+
+            time.sleep(0.5)
 
 
 class Worker(threading.Thread):
-    """Creating Crunch Dataset...
+    """
     Thread class for asynchronously pushing tweets to the database
     """
     def __init__(self, name):
@@ -36,8 +144,7 @@ class Worker(threading.Thread):
                 data["val"] = str(num)
 
                 try:
-                    print("Worker: " + self.name + " processing tweet "
-                          + data["val"])
+                   # print("Worker: " + self.name + " processing tweet " + data["id_str"])
                     client.counter.new = client.col.tweets.count() + 1
                     formatted = {"text": data["text"],
                                  "user": data["user"],
@@ -57,16 +164,16 @@ class Worker(threading.Thread):
                                                data["id_str"]}).count() == 0:
                         client.col.tweets.insert(formatted)
                     else:
-                        print("Item already exists")
+                       # print("Item already exists")
                         client.tweet_count -= 1
                     if client.col.tweets.count() >= client.tweet_max:
                         client.cutoff = True
-                        print("Stopping all workers, cutoff reached")
+                     #   print("Stopping all workers, cutoff reached")
 
                 except KeyError:
                     client.malformed += 1
                     client.tweet_count -= 1
-                    print("malformed tweet, ignoring...")
+                    #print("malformed tweet, ignoring...")
 
 
 class QuietHarvey(object):
@@ -209,6 +316,8 @@ class QuietHarvey(object):
             self.tweet_buffer.append((data, self.tweet_count))
 
         else:
+            if self.col.tweets.count() < self.tweet_max:
+                return
             # When tweet_count exceeds the maximum tweets to gather
             # (set in config) disconnect from twitter
             self.listener.disconnect()
@@ -231,6 +340,13 @@ class QuietHarvey(object):
         Handles the interaction between Mongo and data crunching classes
         :return: None
         """
+
+        if self.mode == 6:
+            print("Generating choropleth...")
+            sys.stdout.flush()
+            c = crunch.Crunch(list(self.col.tweets.find()), config=self.cfg)
+            sys.stdout.flush()
+            c.generate_choropleth()
 
         if self.mode in [1, 4]:
             # Initialize a Crunch object
@@ -337,6 +453,7 @@ class QuietHarvey(object):
                 plt.show()
 
 
+
 if __name__ == "__main__":
 
     client = QuietHarvey()
@@ -348,9 +465,9 @@ if __name__ == "__main__":
                      "[4]Crunch&WC  \033[33m[5]Custom Color Map ("
                      + ["\033[31moff\033[33m","\033[32mon\033[33m"]
                      [client.color] +
-                     ")\033[0m [6]Quit\nChoose a mode: ")
+                     ")\033[0m [6]Choropleth/Worldmap [7]Quit\nChoose a mode: ")
         try:
-            if int(mode) in [1, 2, 3, 4]:
+            if int(mode) in [1, 2, 3, 4, 6]:
                 client.mode = int(mode)
                 # Determine if we need to connect to twitter at all,
                 # or if just need to analyze our data
@@ -378,6 +495,7 @@ if __name__ == "__main__":
                                 client.thread_pool[t].start()
 
                             # Connect to twitter and gather tweets
+                            p = ProgressBar().start()
                             L.run(q)
 
                         except KeyboardInterrupt:
@@ -430,14 +548,12 @@ if __name__ == "__main__":
                     print("No tweets to gather. Moving on...")
                     client.analyze()
 
-            elif int(mode) == 6:
-                print("Goodbye")
-                exit()
-
             elif int(mode) == 5:
                 client.color = not client.color
-
+            elif int(mode) == 7:
+                exit()
             else:
                 print("Invalid option, please choose a valid option")
-        except ValueError:
+        except ValueError as e:
+            print(str(e))
             print("Type a number only")

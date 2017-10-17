@@ -1,5 +1,17 @@
+from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly
+import plotly.plotly as py
+import plotly.offline as pyo
+
+import json
+import pandas as pd
+import sys
+
+def print(s, end='\n', file=sys.stdout):
+    file.write(s + end)
+    file.flush()
 
 
 class Crunch(object):
@@ -12,7 +24,9 @@ class Crunch(object):
         Constructor. Creates local copy of MongoDB collection to work with
         :param data_set: cursor or list of Tweets
         """
+
         if data_set is not None:
+            print("Creating dataset...")
             self.d = data_set
         else:
             self.d = None
@@ -20,8 +34,12 @@ class Crunch(object):
         if config is None:
             self.default_pop = 10
         else:
+            self.config = config
             self.default_pop = config["target_graph_population"]
-
+            try:
+                self.ptoken = config["plotly_api_key"]
+            except KeyError:
+                print("Warn: No plotly token, cannot use choropleths")
         self.frequency = {}
 
     def get_user_by_id(self, uid):
@@ -275,7 +293,83 @@ class Crunch(object):
         plt.figure(num=1).canvas.set_window_title(fig)
         plt.show()
 
+    def generate_choropleth(self):
+        sys.stdout.flush()
+        print("Removing null location tweets...")
+        sys.stdout.flush()
+        temp = []
+        for tweet in self.d:
+            if not tweet["user"]["location"] is None:
+                temp.append(tweet)
+        with open("state_codes.json", "r") as fp:
+            scodes = json.load(fp)
 
+        diff = len(self.d) - len(temp)
 
+        print("Usable tweets: " + str(diff))
+        if diff < 1:
+            print("\033[31mUnable to continue, not enough data! \033[0m")
+            return
+        sys.stdout.flush()
+        locmap = {}
+        error = 0
+        for tweet in temp:
+            loc = tweet["user"]["location"].lower().split(',')
+            for state in scodes:
+                for word in loc:
+                    if state.lower() == word.strip() or scodes[state].lower() == word.strip():
+                        # print("Matched word: " + word.strip() + " to " + state.lower())
+                        if state in locmap:
+                            locmap[state] += 1
+                        else:
+                            locmap[state] = 1
 
+        figmap = {"state":list(locmap.keys()), "tweets":list(locmap.values())}
+
+        df = pd.DataFrame.from_dict(figmap, orient="columns")
+
+        for col in df.columns:
+            df[col] = df[col].astype(str)
+
+        scl = [[0.0, 'rgb(240,245,247)'], [0.2, 'rgb(217,230,235)'], [0.4, 'rgb(188,211,220)'], \
+               [0.6, 'rgb(154,187,200)'], [0.8, 'rgb(107,157,177)'], [1.0, 'rgb(39,114,143)']]
+
+        df['text'] = df['state'] + '<br>' + "Tweets: " + df['tweets']
+
+        data = [dict(
+            type='choropleth',
+            colorscale=scl,
+            autocolorscale=False,
+            locations=df['state'],
+            z=df['tweets'].astype(float),
+            locationmode='USA-states',
+            marker=dict(
+                line=dict(
+                    color='rgb(255,255,255)',
+                    width=2
+                )),
+            colorbar=dict(
+                title="Tweets")
+        )]
+
+        layout = dict(
+            title="Tweet Distribution by State (from " + str(diff) + " tweets)",
+
+            geo=dict(
+                scope='usa',
+                projection=dict(type='albers usa'),
+                showlakes=True,
+                lakecolor='rgb(255, 255, 255)'),
+        )
+
+        fig = dict(data=data, layout=layout)
+        if self.config["plotly_api_key"] != "":
+            print("attempting to plot online....")
+            plotly.tools.set_credentials_file(username=self.config["plotly_api_user"], api_key=self.config["plotly_api_key"])
+            py.iplot(fig, filename='Tweets By State')
+
+        pyo.plot(fig, auto_open=True, image='png', image_filename="harvey_choropleth",
+                     output_type='file', image_width=1920, image_height=1080, filename="harvey_choropleth.html")
+
+        return True
 
