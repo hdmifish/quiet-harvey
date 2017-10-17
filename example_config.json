@@ -1,7 +1,7 @@
 {
   "_comment": "RENAME THIS FILE TO config.json FOR IT TO WORK",
   "thread_count": 8,
-  "max_tweets": 8000,
+  "max_tweets": 100000,
   "con_key":"",
   "con_sec":"",
   "tok_key":"",

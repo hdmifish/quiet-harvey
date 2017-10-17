@@ -44,6 +44,7 @@ class Worker(threading.Thread):
                                  "timestamp_ms": data["timestamp_ms"],
                                  "id_str": data["id_str"],
                                  "is_rt": ("retweeted_status" in data)}
+
                     if formatted["is_rt"]:
                         formatted["rt"] = {"rt_id":
                                            data["retweeted_status"]["id_str"],
@@ -357,8 +358,8 @@ if __name__ == "__main__":
                     try:
                         # Create a Listener to handle connections with Twitter
                         # Connect the two classes
-                        listener = listener.Listener(client)
-                        client.listener = listener
+                        L = listener.Listener(client)
+                        client.listener = L
 
                         q = "Empty"
                         q = input("Please type a search phrase: ")
@@ -370,14 +371,14 @@ if __name__ == "__main__":
                             # Tell threads to continue to loop
                             # even if queue is empty.
                             client.running = True
-                            thread_pool = []
+                            client.thread_pool = []
                             for t in range(client.thread_count):
                                 # Create threads and start them
                                 client.thread_pool.append(Worker(name=str(t)))
                                 client.thread_pool[t].start()
 
                             # Connect to twitter and gather tweets
-                            listener.run(q)
+                            L.run(q)
 
                         except KeyboardInterrupt:
                             # For manually disconnecting
