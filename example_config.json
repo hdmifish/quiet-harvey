@@ -6,8 +6,8 @@
   "con_sec":"",
   "tok_key":"",
   "tok_sec":"",
-   "use_local": false,
-  "uri_string": "USE THIS IF YOU ARE CONNECTING TO A REMOTE MONGO SERVER (ATLAS). Remember to set set use_local to false",
+  "use_local": false,
+  "uri_string":"mongodb://rootadmin:Zapdos#145@cluster0-shard-00-00-nw0vj.mongodb.net:27017,cluster0-shard-00-01-nw0vj.mongodb.net:27017,cluster0-shard-00-02-nw0vj.mongodb.net:27017/test?ssl=true&replicaSet=Cluster0-shard-0&authSource=admin",
   "mask": "mask.jpg",
   "target_graph_population": 10
 }
