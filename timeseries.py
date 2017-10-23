@@ -12,6 +12,10 @@ from dateutil import parser
 from pymongo import MongoClient
 
 def generate_timeseries():
+    retweet_tracker()
+    tweets_per_minute()
+
+def retweet_tracker():
     with open("config.json", "r") as fp:
         cfg = json.load(fp)
 
@@ -69,4 +73,39 @@ def generate_timeseries():
 
         plt.plot(xs, ys)
 
+    plt.show()
+
+def tweets_per_minute():
+    with open("config.json", "r") as fp:
+        cfg = json.load(fp)
+
+    db = None
+
+    if cfg["use_local"] is True:
+        # print("\nusing local database...", end='')
+        db = MongoClient('localhost')
+    else:
+        db = MongoClient(cfg["uri_string"])
+
+    all_tweets = db.tweetstream.harvey.tweets.find({}).sort([('timestamp_ms', 1)])
+
+    tweets_per_minute = {}
+    minutes = []
+    for tweet in all_tweets:
+        date = datetime.fromtimestamp(int(tweet['timestamp_ms'])/1000.0)
+
+        minute = date.minute
+        min_str = str(minute)
+
+        if not minute in minutes:
+            minutes.append(minute)
+            tweets_per_minute[min_str] = 1
+        else:
+            tweets_per_minute[min_str] += 1
+
+    vals = []
+    for mn in minutes:
+        vals.append(tweets_per_minute[str(mn)])
+
+    plt.plot(minutes, vals)
     plt.show()
