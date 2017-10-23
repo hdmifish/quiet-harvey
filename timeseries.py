@@ -13,7 +13,7 @@ from pymongo import MongoClient
 
 def generate_timeseries():
     retweet_tracker()
-    tweets_per_minute()
+    tweets_per_min()
 
 def retweet_tracker():
     with open("config.json", "r") as fp:
@@ -47,7 +47,7 @@ def retweet_tracker():
 
         date = datetime.fromtimestamp(int(tweet['timestamp_ms'])/1000.0)
 
-        hour = date.minute
+        hour = date.hour
         hour_str = str(hour)
 
         if not hour in hours:
@@ -63,19 +63,19 @@ def retweet_tracker():
                 retweets[rt_id][hour_str] += 1
 
     for rt, hrs in retweets.items():
-        # print(rt, hrs)
         xs = []
         ys = []
 
-        for hr, cnt in hrs.items():
-            xs.append(int(hr))
-            ys.append(cnt)
+        for hr in hours:
+            if str(hr) in hrs:
+                xs.append(hr)
+                ys.append(hrs[str(hr)])
 
         plt.plot(xs, ys)
 
     plt.show()
 
-def tweets_per_minute():
+def tweets_per_min():
     with open("config.json", "r") as fp:
         cfg = json.load(fp)
 
