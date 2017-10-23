@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import threading
 import sys
 from _tkinter import TclError
+import timeseries
 from urllib3.exceptions import ProtocolError
 
 def print(s, end='\n', file=sys.stdout):
@@ -153,12 +154,12 @@ class Worker(threading.Thread):
                                  "is_rt": ("retweeted_status" in data)}
 
                     if formatted["is_rt"]:
-                        formatted["rt"] = {"rt_id":
-                                           data["retweeted_status"]["id_str"],
-                                           "rt_text":
-                                           data["retweeted_status"]["text"],
-                                           "rt_user":
-                                           data["retweeted_status"]["user"]}
+                        formatted["rt"] = {
+                            "rt_id": data["retweeted_status"]["id_str"],
+                            "rt_text": data["retweeted_status"]["text"],
+                            "rt_user": data["retweeted_status"]["user"],
+                            "rt_popularity": data['retweeted_status']['retweet_count'] + data['retweeted_status']['favorite_count'] + data['retweeted_status']['reply_count'] + data['retweeted_status']['quote_count']
+                        }
 
                     if client.col.tweets.find({"id_str":
                                                data["id_str"]}).count() == 0:
@@ -351,12 +352,12 @@ class QuietHarvey(object):
         if self.mode in [1, 4]:
             # Initialize a Crunch object
 
-            print("Creating Crunch Dataset...", end='', flush=True)
+            print("Creating Crunch Dataset...", end='')
             sys.stdout.flush()
             c = crunch.Crunch(list(self.col.tweets.find()), config=self.cfg)
 
             print("\nGenerating retweet frequency graph...",
-                  end='',  flush=True)
+                  end='')
             sys.stdout.flush()
             if c.generate_rt_frequency():
                 # The above if statement just saves us from the redundency
@@ -412,6 +413,8 @@ class QuietHarvey(object):
                       + "\nTweet: " + tweet["text"]
                       + "\nWith " + str(val)
                       + " tweets\n\n-------------------------------")
+
+            timeseries.generate_timeseries()
 
         if self.mode in [2, 3, 4]:
             print("Initializing Bubbler...", end='', flush=True)

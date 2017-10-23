@@ -23,7 +23,10 @@ def generate_timeseries():
     else:
         db = MongoClient(cfg["uri_string"])
 
+    top_rts = db.tweetstream.harvey.tweets.find({}).sort([('rt.rt_popularity', -1)]).limit(10)
     all_tweets = db.tweetstream.harvey.tweets.find({}).sort([('timestamp_ms', 1)])
+
+    top = [r['rt']['rt_id'] for r in top_rts]
 
     retweets = {}
     hours = []
@@ -34,6 +37,9 @@ def generate_timeseries():
             continue
 
         rt_id = tweet['rt']['rt_id']
+
+        if not rt_id in top:
+            continue
 
         date = datetime.fromtimestamp(int(tweet['timestamp_ms'])/1000.0)
 
