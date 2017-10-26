@@ -342,6 +342,11 @@ class QuietHarvey(object):
         :return: None
         """
 
+        if self.mode == 7:
+            top_rts = list(self.col.tweets.find({}).sort([('rt.rt_popularity', -1)]).limit(10))
+            all_tweets = list(self.col.tweets.find({}).sort([('timestamp_ms', 1)]))
+            timeseries.generate_timeseries(all_tweets, top_rts)
+
         if self.mode == 6:
             print("Generating choropleth...")
             sys.stdout.flush()
@@ -414,8 +419,6 @@ class QuietHarvey(object):
                       + "\nWith " + str(val)
                       + " tweets\n\n-------------------------------")
 
-            timeseries.generate_timeseries()
-
         if self.mode in [2, 3, 4]:
             print("Initializing Bubbler...", end='', flush=True)
             sys.stdout.flush()
@@ -468,9 +471,9 @@ if __name__ == "__main__":
                      "[4]Crunch&WC  \033[33m[5]Custom Color Map ("
                      + ["\033[31moff\033[33m","\033[32mon\033[33m"]
                      [client.color] +
-                     ")\033[0m [6]Choropleth/Worldmap [7]Quit\nChoose a mode: ")
+                     ")\033[0m [6]Choropleth/Worldmap [7]Timeseries [8]Quit\nChoose a mode: ")
         try:
-            if int(mode) in [1, 2, 3, 4, 6]:
+            if int(mode) in [1, 2, 3, 4, 6, 7]:
                 client.mode = int(mode)
                 # Determine if we need to connect to twitter at all,
                 # or if just need to analyze our data
@@ -553,7 +556,7 @@ if __name__ == "__main__":
 
             elif int(mode) == 5:
                 client.color = not client.color
-            elif int(mode) == 7:
+            elif int(mode) == 8:
                 exit()
             else:
                 print("Invalid option, please choose a valid option")

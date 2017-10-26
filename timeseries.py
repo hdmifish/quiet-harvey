@@ -11,24 +11,11 @@ import sys
 from dateutil import parser
 from pymongo import MongoClient
 
-def generate_timeseries():
-    retweet_tracker()
-    tweets_per_min()
+def generate_timeseries(all_tweets, top_rts):
+    retweet_tracker(all_tweets, top_rts)
+    tweets_per_min(all_tweets)
 
-def retweet_tracker():
-    with open("config.json", "r") as fp:
-        cfg = json.load(fp)
-
-    db = None
-
-    if cfg["use_local"] is True:
-        # print("\nusing local database...", end='')
-        db = MongoClient('localhost')
-    else:
-        db = MongoClient(cfg["uri_string"])
-
-    top_rts = db.tweetstream.harvey.tweets.find({}).sort([('rt.rt_popularity', -1)]).limit(10)
-    all_tweets = db.tweetstream.harvey.tweets.find({}).sort([('timestamp_ms', 1)])
+def retweet_tracker(all_tweets, top_rts):
 
     top = [r['rt']['rt_id'] for r in top_rts]
 
@@ -75,19 +62,7 @@ def retweet_tracker():
 
     plt.show()
 
-def tweets_per_min():
-    with open("config.json", "r") as fp:
-        cfg = json.load(fp)
-
-    db = None
-
-    if cfg["use_local"] is True:
-        # print("\nusing local database...", end='')
-        db = MongoClient('localhost')
-    else:
-        db = MongoClient(cfg["uri_string"])
-
-    all_tweets = db.tweetstream.harvey.tweets.find({}).sort([('timestamp_ms', 1)])
+def tweets_per_min(all_tweets):
 
     tweets_per_minute = {}
     minutes = []
